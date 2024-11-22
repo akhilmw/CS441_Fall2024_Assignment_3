@@ -1,0 +1,7 @@
+target/
+
+/.idea/modules.xml
+.idea/libraries/
+
+.DS_Store
+

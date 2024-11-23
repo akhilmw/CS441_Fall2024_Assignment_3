@@ -2,6 +2,10 @@ target/
 
 /.idea/modules.xml
 .idea/libraries/
+/src/main/resources/aws_credentials
+
+/out/
+
 
 .DS_Store
 

@@ -121,44 +121,4 @@ trait Routes extends JsonSupport {
     }
   }
 
-
-
-
-  def convertSdkRequestToAkkaHttpRequest(sdkRequest: SdkHttpFullRequest): HttpRequest = {
-    val methodName = sdkRequest.method().name()
-    val method = HttpMethods.getForKey(methodName).getOrElse(HttpMethods.POST)
-    val uri = sdkRequest.getUri.toString
-
-    // Remove 'Content-Type' from headers
-    val headers = sdkRequest.headers().asScala.flatMap { case (name, values) =>
-      if (name.equalsIgnoreCase("Content-Type")) {
-        None
-      } else {
-        values.asScala.flatMap { value =>
-          HttpHeader.parse(name, value) match {
-            case HttpHeader.ParsingResult.Ok(h, _) => Some(h)
-            case HttpHeader.ParsingResult.Error(error) =>
-              println(s"Failed to parse header $name: $error")
-              None
-          }
-        }
-      }
-    }.toList
-
-    // Set 'Content-Type' in HttpEntity
-    val entity = sdkRequest.contentStreamProvider().toScala.map { provider =>
-      val inputStream = provider.newStream()
-      val bytes = Stream.continually(inputStream.read()).takeWhile(_ != -1).map(_.toByte).toArray
-      val contentType = ContentTypes.`application/json`
-      HttpEntity(contentType, bytes)
-    }.getOrElse(HttpEntity.Empty)
-
-    HttpRequest(
-      method = method,
-      uri = uri,
-      headers = headers,
-      entity = entity
-    )
-  }
-
 }

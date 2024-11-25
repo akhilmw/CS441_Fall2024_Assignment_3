@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package bedrock;
+
+// The Bedrock service definition.
+service BedrockService {
+  // Sends a query to Bedrock and receives a response.
+  rpc ProcessQuery (QueryRequest) returns (QueryResponse) {}
+}
+
+// The request message containing the query.
+message QueryRequest {
+  string query = 1;
+}
+
+// The response message containing the Bedrock output.
+message QueryResponse {
+  string response = 1;
+  string model = 2;
+}

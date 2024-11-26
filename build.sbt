@@ -48,6 +48,9 @@ lazy val root = (project in file("."))
       "software.amazon.awssdk" % "apache-client" % awsSdkVersion exclude("org.scala-lang.modules", "scala-java8-compat_2.13"),
       "software.amazon.awssdk" % "netty-nio-client" % awsSdkVersion exclude("org.scala-lang.modules", "scala-java8-compat_2.13"),
 
+      // ollama dependency
+      "io.github.ollama4j" % "ollama4j" % "1.0.79",
+
       // Scala Java 8 compatibility
       "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.0",
 

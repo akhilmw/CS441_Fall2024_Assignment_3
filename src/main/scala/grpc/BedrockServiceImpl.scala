@@ -5,7 +5,6 @@ import bedrock.bedrock.BedrockServiceGrpc.BedrockService
 import bedrock.bedrock.{QueryRequest, QueryResponse}
 import org.slf4j.LoggerFactory
 import io.circe.parser._
-import io.circe.{Decoder, HCursor}
 import io.circe.generic.auto._
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
@@ -37,48 +36,31 @@ class BedrockServiceImpl(implicit ec: ExecutionContext, system: ActorSystem) ext
     Http()
       .singleRequest(httpRequest)
       .flatMap { response =>
-        response.entity.toStrict(10.seconds)
-      }
-      .flatMap { strictEntity =>
-        Future.successful(strictEntity.data.utf8String)
+        response.entity.toStrict(10.seconds).map(_.data.utf8String)
       }
       .flatMap { responseBody =>
         logger.debug(s"Response from Lambda: $responseBody")
 
         Future.fromTry {
-          parse(responseBody).flatMap(_.as[LambdaResponse]) match {
-            case Right(lambdaResponse) if lambdaResponse.statusCode == 200 =>
-              parse(lambdaResponse.body).flatMap(_.as[BedrockResponse]) match {
-                case Right(bedrockResponse) =>
-                  scala.util.Success(
-                    QueryResponse(
-                      response = bedrockResponse.response,
-                      model = bedrockResponse.model
-                    )
-                  )
-                case Left(error) =>
-                  scala.util.Success(
-                    QueryResponse(
-                      response = s"Error parsing Bedrock response: ${error.getMessage}",
-                      model = "error"
-                    )
-                  )
-              }
-            case Right(lambdaResponse) =>
+          for {
+            lambdaResp <- parse(responseBody).flatMap(_.as[LambdaResponse]).toTry
+            _ = logger.debug(s"Parsed Lambda response: $lambdaResp")
+            result <- if (lambdaResp.statusCode == 200) {
+              parse(lambdaResp.body).flatMap(_.as[BedrockResponse]).map { bedrockResp =>
+                QueryResponse(
+                  response = bedrockResp.response,
+                  model = bedrockResp.model
+                )
+              }.toTry
+            } else {
               scala.util.Success(
                 QueryResponse(
-                  response = s"Lambda returned error status: ${lambdaResponse.statusCode}",
+                  response = s"Lambda returned error status: ${lambdaResp.statusCode}",
                   model = "error"
                 )
               )
-            case Left(error) =>
-              scala.util.Success(
-                QueryResponse(
-                  response = s"Failed to parse Lambda response: ${error.getMessage}",
-                  model = "error"
-                )
-              )
-          }
+            }
+          } yield result
         }
       }
       .recover { case ex =>

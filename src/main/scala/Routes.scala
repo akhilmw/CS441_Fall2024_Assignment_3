@@ -4,15 +4,13 @@ import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import akka.http.scaladsl.model._
 import models._
 import grpc.GrpcClientService
-
+import services.ConversationManager
+import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 import org.slf4j.LoggerFactory
-
 import scala.util.{Failure, Success}
 import io.circe.generic.auto._
 import io.circe.syntax._
-
-import scala.concurrent.duration._
 
 trait Routes extends JsonSupport {
   private val logger = LoggerFactory.getLogger(getClass)
@@ -25,19 +23,16 @@ trait Routes extends JsonSupport {
     port = 50051
   )
 
+  private val conversationManager = new ConversationManager()
+
   implicit def myExceptionHandler: ExceptionHandler =
     ExceptionHandler {
       case ex: Exception =>
         extractUri { uri =>
           logger.error(s"Request to $uri could not be handled normally", ex)
           complete(
-            HttpResponse(
-              status = StatusCodes.InternalServerError,
-              entity = HttpEntity(
-                ContentTypes.`application/json`,
-                s"""{"error":"Internal server error: ${ex.getClass.getSimpleName}"}"""
-              )
-            )
+            StatusCodes.InternalServerError ->
+              ErrorResponse(Option(ex.getMessage).getOrElse("Internal server error"))
           )
         }
     }
@@ -46,36 +41,69 @@ trait Routes extends JsonSupport {
     post {
       handleExceptions(myExceptionHandler) {
         entity(as[QueryRequest]) { queryRequest =>
-          logger.info(s"Received request: $queryRequest")
+          extractRequest { request =>
+            val sessionId = request.headers
+              .find(_.name() == "X-Session-ID")
+              .map(_.value())
+              .getOrElse(UUID.randomUUID().toString)
 
-          val resultFuture = grpcClient.processQuery(queryRequest)
-            .map { response =>
-              HttpResponse(
-                status = StatusCodes.OK,
-                entity = HttpEntity(
-                  ContentTypes.`application/json`,
-                  s"""{"response":"${response.response.replace("\"", "\\\"")}"}"""
-                )
-              )
-            }
-            .recover { case ex =>
-              HttpResponse(
-                status = StatusCodes.InternalServerError,
-                entity = HttpEntity(
-                  ContentTypes.`application/json`,
-                  s"""{"error":"${ex.getMessage.replace("\"", "\\\"")}"}"""
-                )
-              )
-            }
+            logger.info(s"Processing request for session $sessionId: $queryRequest")
 
-          complete(resultFuture)
+            if (request.headers.exists(_.name() == "X-Session-ID")) {
+              processQuery(sessionId, queryRequest)
+            } else {
+              conversationManager.initializeConversation(sessionId, queryRequest.query)
+              respondWithHeader(headers.RawHeader("X-Session-ID", sessionId)) {
+                processQuery(sessionId, queryRequest)
+              }
+            }
+          }
         }
       }
+    } ~
+      path("history" / Segment) { sessionId =>
+        get {
+          complete {
+            conversationManager.getConversationHistory(sessionId) match {
+              case Some(history) =>
+                StatusCodes.OK -> history.map { case (q, r) =>
+                  ApiResponse(response = r, nextQuery = Some(q))
+                }
+              case None =>
+                StatusCodes.NotFound -> ErrorResponse("Conversation not found")
+            }
+          }
+        }
+      }
+  }
+
+  private def processQuery(sessionId: String, queryRequest: QueryRequest): Route = {
+    onComplete(
+      for {
+        grpcResponse <- grpcClient.processQuery(queryRequest)
+        nextQuery <- conversationManager.generateNextQuery(sessionId, grpcResponse.response)
+      } yield (grpcResponse, nextQuery)
+    ) {
+      case Success((response, maybeNextQuery)) =>
+        complete(
+          StatusCodes.OK ->
+            ApiResponse(
+              response = response.response,
+              nextQuery = maybeNextQuery
+            )
+        )
+
+      case Failure(error) =>
+        logger.error(s"Error processing query: ${error.getMessage}", error)
+        complete(
+          StatusCodes.InternalServerError ->
+            ErrorResponse(Option(error.getMessage).getOrElse("Unknown error occurred"))
+        )
     }
   }
 
   sys.addShutdownHook {
-    logger.info("Shutting down gRPC client")
+    logger.info("Shutting down services")
     grpcClient.shutdown()
   }
 }

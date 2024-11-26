@@ -18,6 +18,10 @@
     <orderEntry type="library" name="sbt: ch.qos.logback:logback-classic:1.4.14:jar" level="project" />
     <orderEntry type="library" name="sbt: ch.qos.logback:logback-core:1.4.14:jar" level="project" />
     <orderEntry type="library" name="sbt: com.chuusai:shapeless_2.13:2.3.12:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.fasterxml.jackson.core:jackson-annotations:2.17.1:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.fasterxml.jackson.core:jackson-core:2.17.1:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.fasterxml.jackson.core:jackson-databind:2.17.1:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.1:jar" level="project" />
     <orderEntry type="library" name="sbt: com.google.android:annotations:4.1.1.4:jar" level="project" />
     <orderEntry type="library" name="sbt: com.google.api.grpc:proto-google-common-protos:2.9.0:jar" level="project" />
     <orderEntry type="library" name="sbt: com.google.code.findbugs:jsr305:3.0.2:jar" level="project" />
@@ -49,6 +53,7 @@
     <orderEntry type="library" name="sbt: io.circe:circe-jawn_2.13:0.14.9:jar" level="project" />
     <orderEntry type="library" name="sbt: io.circe:circe-numbers_2.13:0.14.9:jar" level="project" />
     <orderEntry type="library" name="sbt: io.circe:circe-parser_2.13:0.14.9:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.github.ollama4j:ollama4j:1.0.79:jar" level="project" />
     <orderEntry type="library" name="sbt: io.grpc:grpc-api:1.53.0:jar" level="project" />
     <orderEntry type="library" name="sbt: io.grpc:grpc-context:1.53.0:jar" level="project" />
     <orderEntry type="library" name="sbt: io.grpc:grpc-core:1.53.0:jar" level="project" />

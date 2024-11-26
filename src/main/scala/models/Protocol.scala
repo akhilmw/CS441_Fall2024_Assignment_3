@@ -1,7 +1,21 @@
 package models
 
+
 case class QueryRequest(query: String)
-case class QueryResponse(response: String)
+
+case class QueryResponse(
+                          response: String
+                        ) {
+  // Ensure response is never null
+  def this() = this("")
+
+  // Clean the response string
+  def cleanResponse: String = {
+    Option(response)
+      .map(_.replaceAll("\u0000", "").trim)
+      .getOrElse("")
+  }
+}
 
 // Bedrock specific models
 case class TextGenerationConfig(

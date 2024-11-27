@@ -4,7 +4,7 @@ import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import akka.http.scaladsl.model._
 import models._
 import grpc.GrpcClientService
-import services.ConversationManager
+import services.{ConversationManager, ConversationRecorder}
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 import org.slf4j.LoggerFactory
@@ -15,8 +15,8 @@ import io.circe.syntax._
 trait Routes extends JsonSupport {
   private val logger = LoggerFactory.getLogger(getClass)
 
-  implicit val system: ActorSystem
-  implicit val executionContext: ExecutionContext
+  implicit val system: ActorSystem = ActorSystem("MyActorSystem")
+  implicit val executionContext: ExecutionContext = system.dispatcher
 
   private val grpcClient = new GrpcClientService(
     host = "localhost",
@@ -24,81 +24,79 @@ trait Routes extends JsonSupport {
   )
 
   private val conversationManager = new ConversationManager()
+  private val recorder = new ConversationRecorder()
 
-  implicit def myExceptionHandler: ExceptionHandler =
-    ExceptionHandler {
-      case ex: Exception =>
-        extractUri { uri =>
-          logger.error(s"Request to $uri could not be handled normally", ex)
-          complete(
-            StatusCodes.InternalServerError ->
-              ErrorResponse(Option(ex.getMessage).getOrElse("Internal server error"))
-          )
-        }
-    }
+  case class ConversationResponse(
+                                   response: String,
+                                   nextQuery: Option[String],
+                                   sessionId: String,
+                                   turnCount: Int
+                                 )
 
   val route: Route = pathPrefix("query") {
     post {
-      handleExceptions(myExceptionHandler) {
-        entity(as[QueryRequest]) { queryRequest =>
-          extractRequest { request =>
-            val sessionId = request.headers
-              .find(_.name() == "X-Session-ID")
-              .map(_.value())
-              .getOrElse(UUID.randomUUID().toString)
+      entity(as[QueryRequest]) { queryRequest =>
+        val sessionId = UUID.randomUUID().toString
+        logger.info(s"Starting conversation $sessionId with query: ${queryRequest.query}")
 
-            logger.info(s"Processing request for session $sessionId: $queryRequest")
+        conversationManager.initializeConversation(sessionId, queryRequest.query)
 
-            if (request.headers.exists(_.name() == "X-Session-ID")) {
-              processQuery(sessionId, queryRequest)
-            } else {
-              conversationManager.initializeConversation(sessionId, queryRequest.query)
-              respondWithHeader(headers.RawHeader("X-Session-ID", sessionId)) {
-                processQuery(sessionId, queryRequest)
+        def continueConversation(currentQuery: String, turnCount: Int): Future[List[ConversationResponse]] = {
+          if (turnCount > 5) { // Max turns
+            Future.successful(Nil)
+          } else {
+            for {
+              // Get response from Bedrock via gRPC
+              response <- grpcClient.processQuery(QueryRequest(currentQuery))
+              _ = recorder.appendToConversation(sessionId, (currentQuery, response.response))
+
+              // Get next query from Ollama
+              nextQuery <- conversationManager.generateNextQuery(sessionId, response.response)
+
+              // Create current turn response
+              currentResponse = ConversationResponse(
+                response = response.response,
+                nextQuery = nextQuery,
+                sessionId = sessionId,
+                turnCount = turnCount
+              )
+
+              // Continue conversation if we have a next query
+              remainingResponses <- nextQuery match {
+                case Some(query) => continueConversation(query, turnCount + 1)
+                case None => Future.successful(Nil)
               }
-            }
+
+            } yield currentResponse :: remainingResponses
           }
         }
-      }
-    } ~
-      path("history" / Segment) { sessionId =>
-        get {
-          complete {
-            conversationManager.getConversationHistory(sessionId) match {
-              case Some(history) =>
-                StatusCodes.OK -> history.map { case (q, r) =>
-                  ApiResponse(response = r, nextQuery = Some(q))
-                }
-              case None =>
-                StatusCodes.NotFound -> ErrorResponse("Conversation not found")
-            }
-          }
+
+        onComplete(continueConversation(queryRequest.query, 1)) {
+          case Success(responses) =>
+            // Save final conversation
+            val history = conversationManager.getConversationHistory(sessionId)
+            history.foreach(recorder.saveConversation(sessionId, _))
+
+            // Return the entire conversation
+            complete(HttpResponse(
+              status = StatusCodes.OK,
+              entity = HttpEntity(
+                ContentTypes.`application/json`,
+                responses.asJson.noSpaces
+              )
+            ))
+
+          case Failure(error) =>
+            logger.error(s"Conversation failed: ${error.getMessage}", error)
+            complete(HttpResponse(
+              status = StatusCodes.InternalServerError,
+              entity = HttpEntity(
+                ContentTypes.`application/json`,
+                s"""{"error":"Conversation failed: ${error.getMessage}"}"""
+              )
+            ))
         }
       }
-  }
-
-  private def processQuery(sessionId: String, queryRequest: QueryRequest): Route = {
-    onComplete(
-      for {
-        grpcResponse <- grpcClient.processQuery(queryRequest)
-        nextQuery <- conversationManager.generateNextQuery(sessionId, grpcResponse.response)
-      } yield (grpcResponse, nextQuery)
-    ) {
-      case Success((response, maybeNextQuery)) =>
-        complete(
-          StatusCodes.OK ->
-            ApiResponse(
-              response = response.response,
-              nextQuery = maybeNextQuery
-            )
-        )
-
-      case Failure(error) =>
-        logger.error(s"Error processing query: ${error.getMessage}", error)
-        complete(
-          StatusCodes.InternalServerError ->
-            ErrorResponse(Option(error.getMessage).getOrElse("Unknown error occurred"))
-        )
     }
   }
 

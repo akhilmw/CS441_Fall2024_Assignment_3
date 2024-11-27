@@ -39,17 +39,13 @@ class ConversationManager(implicit ec: ExecutionContext) {
       }
 
       val state = stateOpt.get
-      if (!shouldContinueConversation(state)) {
-        logger.info(s"Conversation $sessionId has reached maximum turns")
-        return Future.successful(None)
-      }
 
       val prompt = generatePrompt(state, currentResponse)
       logger.debug(s"Generated prompt: $prompt")
 
       val options = new Options(new java.util.HashMap[String, Object]())
 
-      try {
+      Future {
         val result = ollamaAPI.generate(
           config.getString("ollama.model"),
           prompt,
@@ -57,29 +53,43 @@ class ConversationManager(implicit ec: ExecutionContext) {
           options
         )
 
-        val nextQuery = if (result != null) {
-          Option(result.getResponse)
-            .map(_.trim)
-            .filter(_.nonEmpty)
-            .filterNot(_.contains("CONVERSATION_END"))
-        } else None
+        val rawResponse = if (result != null) result.getResponse else ""
+        logger.debug(s"Raw response from Ollama: '$rawResponse'")
+
+        val responseText = rawResponse.trim
+        val isNonEmpty = responseText.nonEmpty
+        val containsTermination = responseText.toLowerCase.contains("conversation_end")
+
+        logger.debug(s"Response text after trim: '$responseText'")
+        logger.debug(s"isNonEmpty: $isNonEmpty, containsTermination: $containsTermination")
+
+        val nextQuery = if (isNonEmpty && !containsTermination) {
+          Some(responseText)
+        } else {
+          None
+        }
+
+        logger.debug(s"Next query: $nextQuery")
 
         nextQuery.foreach { query =>
           updateConversationState(sessionId, query, currentResponse)
         }
 
-        Future.successful(nextQuery)
-      } catch {
+        nextQuery
+      }.recover {
         case ex: Exception =>
           logger.error(s"Error calling Ollama API: ${ex.getMessage}", ex)
-          Future.successful(None)
+          None
       }
+
     } catch {
       case ex: Exception =>
         logger.error(s"Unexpected error in generateNextQuery: ${ex.getMessage}", ex)
         Future.successful(None)
     }
   }
+
+
 
   def initializeConversation(sessionId: String, initialQuery: String): Unit = {
     logger.debug(s"Initializing conversation for session $sessionId with query: $initialQuery")
@@ -124,7 +134,7 @@ class ConversationManager(implicit ec: ExecutionContext) {
     synchronized {
       conversations.get(sessionId).foreach { state =>
         conversations += (sessionId -> state.copy(
-          turnCount = state.turnCount + 1,
+          // Remove turnCount increment
           lastQuery = query,
           lastResponse = response,
           conversationHistory = state.conversationHistory :+ (query, response)

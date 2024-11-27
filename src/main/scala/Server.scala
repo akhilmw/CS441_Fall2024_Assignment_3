@@ -5,8 +5,8 @@ import scala.concurrent.{Await, ExecutionContextExecutor}
 import scala.concurrent.duration.Duration
 
 object Server extends App with Routes {
-  implicit val system: ActorSystem = ActorSystem("bedrock-system")
-  implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+//  implicit val system: ActorSystem = ActorSystem("bedrock-system")
+//  implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
   val interface = "0.0.0.0"
   val port = 8080

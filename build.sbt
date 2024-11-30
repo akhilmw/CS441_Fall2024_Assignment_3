@@ -12,7 +12,20 @@ lazy val root = (project in file("."))
   .settings(
     name := "CS441_Fall2024_Assignment_3",
 
-    // Protobuf and ScalaPB settings
+    assemblyMergeStrategy in assembly := {
+      case PathList("META-INF", "services", xs @ _*) => MergeStrategy.concat
+      case PathList("META-INF", xs @ _*)             => MergeStrategy.discard
+      case PathList("module-info.class")             => MergeStrategy.discard
+      case PathList("META-INF", "native-image", xs @ _*) => MergeStrategy.discard
+      case PathList("google", "protobuf", xs @ _*)   => MergeStrategy.first
+      case x =>
+        val oldStrategy = (assemblyMergeStrategy in assembly).value
+        oldStrategy(x)
+    },
+
+    assembly / mainClass := Some("Main"),
+
+      // Protobuf and ScalaPB settings
     Compile / PB.protoSources := Seq(sourceDirectory.value / "main" / "protobuf"),
     Compile / PB.targets := Seq(
       scalapb.gen(grpc = true) -> (Compile / sourceManaged).value / "scalapb"

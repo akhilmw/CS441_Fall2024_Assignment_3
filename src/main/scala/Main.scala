@@ -5,21 +5,28 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Await}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success}
 import org.slf4j.LoggerFactory
+import com.typesafe.config.ConfigFactory
+
 
 object Main extends App {
   private val logger = LoggerFactory.getLogger(getClass)
+  private val config = ConfigFactory.load()
+  private val httpInterface = config.getString("http.interface")
+  private val httpPort = config.getInt("http.port")
+  private val grpcPort = config.getInt("grpc.server.port")
+
 
   implicit val system: ActorSystem = ActorSystem("bedrock-system")
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
   // Start gRPC Server
   val grpcServer = new GrpcServer()
-  grpcServer.start(50051)
-  logger.info("gRPC Server started on port 50051")
+  grpcServer.start(grpcPort)
+  logger.info(s"gRPC Server started on port ${grpcPort}")
 
   // Start HTTP Server
-  val interface = "localhost"
-  val port = 8080
+  val interface = httpInterface
+  val port = httpPort
 
   val routes = new Routes {}
   val bindingFuture = Http().newServerAt(interface, port).bind(routes.route)

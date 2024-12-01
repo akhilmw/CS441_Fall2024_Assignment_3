@@ -12,12 +12,12 @@ import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFut
 class GrpcClientService(host: String, port: Int)(implicit ec: ExecutionContext) {
   private val logger = LoggerFactory.getLogger(getClass)
 
-  private val channel = NettyChannelBuilder
+  val channel = NettyChannelBuilder
     .forAddress(host, port)
     .usePlaintext()
     .build()
 
-  private val blockingStub = BedrockServiceGrpc.blockingStub(channel)
+  val blockingStub = BedrockServiceGrpc.blockingStub(channel)
 
   private def toScalaFuture[A](guavaFuture: ListenableFuture[A]): Future[A] = {
     val promise = Promise[A]()

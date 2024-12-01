@@ -39,11 +39,14 @@
     <orderEntry type="library" name="sbt: com.typesafe.akka:akka-actor-typed_2.13:2.8.6:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe.akka:akka-actor_2.13:2.8.6:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe.akka:akka-http-core_2.13:10.5.3:jar" level="project" />
+    <orderEntry type="library" scope="TEST" name="sbt: com.typesafe.akka:akka-http-testkit_2.13:10.5.3:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe.akka:akka-http_2.13:10.5.3:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe.akka:akka-parsing_2.13:10.5.3:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe.akka:akka-protobuf-v3_2.13:2.8.6:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe.akka:akka-slf4j_2.13:2.8.6:jar" level="project" />
+    <orderEntry type="library" scope="TEST" name="sbt: com.typesafe.akka:akka-stream-testkit_2.13:2.8.6:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe.akka:akka-stream_2.13:2.8.6:jar" level="project" />
+    <orderEntry type="library" scope="TEST" name="sbt: com.typesafe.akka:akka-testkit_2.13:2.8.6:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe:config:1.4.3:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe:ssl-config-core_2.13:0.6.1:jar" level="project" />
     <orderEntry type="library" name="sbt: commons-codec:commons-codec:1.15:jar" level="project" />

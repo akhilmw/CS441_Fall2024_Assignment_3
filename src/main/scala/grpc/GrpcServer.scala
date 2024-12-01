@@ -7,6 +7,7 @@ import io.grpc.Server
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import org.slf4j.LoggerFactory
 import io.grpc.netty.NettyServerBuilder
+import com.typesafe.config.ConfigFactory
 
 class GrpcServer(implicit executionContext: ExecutionContext, system: ActorSystem) {
   private val logger = LoggerFactory.getLogger(getClass)
@@ -49,8 +50,10 @@ class GrpcServer(implicit executionContext: ExecutionContext, system: ActorSyste
 object GrpcServer extends App {
   implicit val system: ActorSystem = ActorSystem("grpc-server")
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+  private val config = ConfigFactory.load()
+  private val grpcPort = config.getInt("grpc.server.port")
 
   val server = new GrpcServer()
-  server.start(50051)
+  server.start(grpcPort)
   server.blockUntilShutdown()
 }

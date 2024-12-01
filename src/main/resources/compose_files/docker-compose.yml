@@ -1,0 +1,41 @@
+services:
+  bedrock-server:
+    build: 
+      context: ../CS441_Fall2024_Assignment_3
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  ollama-client:
+    build: 
+      context: ../CS441_Fall2024_Assignment_3_Client
+      dockerfile: Dockerfile
+    depends_on:
+      bedrock-server:
+        condition: service_healthy
+    environment:
+      - BEDROCK_SERVER_URL=http://bedrock-server:8080
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    volumes:
+      - ./conversations:/app/conversations  # Mount local conversations directory
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

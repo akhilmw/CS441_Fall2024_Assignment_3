@@ -1,0 +1,16 @@
+services:
+  bedrock-server:
+    image: bedrock-server:latest  # Use the loaded image instead of building
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

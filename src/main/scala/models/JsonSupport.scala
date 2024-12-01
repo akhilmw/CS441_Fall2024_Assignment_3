@@ -1,5 +1,10 @@
 package models
 
+/**
+ * Provides JSON serialization support using Circe.
+ * Includes marshallers and unmarshallers for HTTP entities.
+ */
+
 import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller}
 import akka.http.scaladsl.unmarshalling.{FromEntityUnmarshaller, FromRequestUnmarshaller, Unmarshaller}
 import akka.http.scaladsl.model.MediaTypes.`application/json`
@@ -17,6 +22,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 trait JsonSupport {
   // Response case classes
+  // Implicit encoders/decoders for JSON conversion
   case class ApiResponse(response: String, nextQuery: Option[String])
   case class ErrorResponse(error: String)
 
@@ -27,6 +33,7 @@ trait JsonSupport {
   implicit val queryResponseEncoder: Encoder[QueryResponse] = deriveEncoder[QueryResponse]
 
   // Basic entity unmarshaller
+  // Custom unmarshaller for handling JSON requests
   implicit def circeUnmarshaller[A: Decoder]: FromEntityUnmarshaller[A] = {
     Unmarshaller
       .stringUnmarshaller

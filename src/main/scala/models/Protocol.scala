@@ -1,6 +1,12 @@
 package models
 
+/**
+ * Defines data models and case classes for the application.
+ * Includes request/response models and Bedrock-specific configurations.
+ */
 
+
+// Base request/response models
 case class QueryRequest(query: String)
 
 case class QueryResponse(

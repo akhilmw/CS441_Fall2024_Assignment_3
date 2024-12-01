@@ -13,6 +13,10 @@ import scala.concurrent.duration._
 import io.circe.syntax._
 import com.typesafe.config.ConfigFactory
 
+/**
+ * Implementation of the Bedrock gRPC service.
+ * Handles query processing and API Gateway communication.
+ */
 class BedrockServiceImpl(implicit ec: ExecutionContext, system: ActorSystem) extends BedrockService {
   private val logger = LoggerFactory.getLogger(getClass)
   private val config = ConfigFactory.load()
@@ -22,9 +26,11 @@ class BedrockServiceImpl(implicit ec: ExecutionContext, system: ActorSystem) ext
   case class BedrockResponse(response: String, model: String)
   case class LambdaError(errorMessage: String)
 
+  // Process incoming gRPC queries
   override def processQuery(request: QueryRequest): Future[QueryResponse] = {
     logger.info(s"Processing gRPC query: ${request.query}")
 
+  //... query processing logic
     val payload = Map(
       "query" -> request.query
     ).asJson.noSpaces

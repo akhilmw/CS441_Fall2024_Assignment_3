@@ -14,15 +14,23 @@ import io.circe.syntax._
 import scala.util.{Failure, Success}
 import com.typesafe.config.ConfigFactory
 
+
+/**
+ * Defines HTTP routes and request handling logic.
+ * Integrates with gRPC client for backend communication.
+ */
+
 trait Routes extends JsonSupport {
   private val logger = LoggerFactory.getLogger(getClass)
   private val config = ConfigFactory.load()
+  // gRPC connection settings
   private val grpcPort = config.getInt("grpc.server.port")
   private val grpcHost = config.getString("grpc.server.host")
 
   implicit val system: ActorSystem = ActorSystem("BedrockSystem")
   implicit val executionContext: ExecutionContext = system.dispatcher
 
+  // Initialize gRPC client for backend communication
   private val grpcClient = new GrpcClientService(
     host = grpcHost,
     port = grpcPort
@@ -32,6 +40,7 @@ trait Routes extends JsonSupport {
                               response: String
                             )
 
+  // Define HTTP routes
   val route: Route =
     pathPrefix("query") {
       post {

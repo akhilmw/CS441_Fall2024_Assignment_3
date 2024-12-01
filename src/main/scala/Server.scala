@@ -8,12 +8,14 @@ import scala.util.{Failure, Success}
 
 object Server extends App with Routes {
 
-//  implicit val system: ActorSystem = ActorSystem("bedrock-system")
-//  implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+  /**
+   * Main HTTP server entry point that sets up and manages the server lifecycle.
+   * Handles server binding, startup, and graceful shutdown.
+   */
 
   val interface = "localhost"
   val port = 8080
-
+  // Bind server to configured host and port
   val bindingFuture = Http().newServerAt(interface, port).bind(route)
 
   bindingFuture.onComplete {
@@ -24,6 +26,7 @@ object Server extends App with Routes {
       system.terminate()
   }
 
+  // Ensure graceful shutdown when JVM terminate
   sys.addShutdownHook {
     bindingFuture
       .flatMap(_.unbind())

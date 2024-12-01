@@ -9,9 +9,13 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.duration._
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture, MoreExecutors}
 
+/**
+ * gRPC client service for communicating with the backend.
+ * Handles connection management and request processing.
+ */
 class GrpcClientService(host: String, port: Int)(implicit ec: ExecutionContext) {
   private val logger = LoggerFactory.getLogger(getClass)
-
+  // Set up gRPC channel and stub
   val channel = NettyChannelBuilder
     .forAddress(host, port)
     .usePlaintext()
@@ -19,9 +23,10 @@ class GrpcClientService(host: String, port: Int)(implicit ec: ExecutionContext) 
 
   val blockingStub = BedrockServiceGrpc.blockingStub(channel)
 
+  // Convert Guava futures to Scala futures
   private def toScalaFuture[A](guavaFuture: ListenableFuture[A]): Future[A] = {
     val promise = Promise[A]()
-
+    // ... future conversion logic
     val callback = new FutureCallback[A] {
       override def onSuccess(result: A): Unit = {
         promise.success(result)
